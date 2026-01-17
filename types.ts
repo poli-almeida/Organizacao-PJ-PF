@@ -10,6 +10,14 @@ export enum TransactionNature {
   MIXED = 'MIXED'
 }
 
+export enum DebtType {
+  CREDIT_CARD = 'CREDIT_CARD',
+  LOAN = 'LOAN',
+  RENEGOTIATION = 'RENEGOTIATION',
+  FINANCING = 'FINANCING',
+  OTHER = 'OTHER'
+}
+
 export interface Transaction {
   id: string;
   date: string;
@@ -34,16 +42,19 @@ export interface Debt {
   totalAmount: number;
   remainingAmount: number;
   installmentValue: number;
-  installmentsTotal: number;
-  installmentsPaid: number;
+  debtType: DebtType;
+  interestRate?: number; // % ao mês
+  isHighRisk?: boolean;
+  startDate: string;
 }
 
 export interface FixedCost {
   id: string;
   description: string;
   totalAmount: number;
-  businessPercentage: number; // Ex: 0.20 para 20%
+  businessPercentage: number; 
   category: string;
+  endDate?: string; // Data para finalizar o custo (opcional)
 }
 
 export interface Milestone {

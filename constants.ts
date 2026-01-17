@@ -1,5 +1,5 @@
 
-import { Milestone, Transaction, Debt, TransactionType, TransactionNature, ProfitBucket, TaxPayment, FixedCost } from './types.ts';
+import { Milestone, Transaction, Debt, TransactionType, TransactionNature, ProfitBucket, TaxPayment, FixedCost, DebtType } from './types.ts';
 
 export const ANNUAL_GOAL = 550000;
 export const DEFAULT_ALLOCATION_RATE = 0.20; // 20% default for home rateio
@@ -29,8 +29,9 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
 ];
 
 export const INITIAL_DEBTS: Debt[] = [
-  { id: 'd1', description: 'Financiamento Carro', totalAmount: 80000, remainingAmount: 32000, installmentValue: 1200, installmentsTotal: 60, installmentsPaid: 40 },
-  { id: 'd2', description: 'IPVA 2024', totalAmount: 2400, remainingAmount: 800, installmentValue: 400, installmentsTotal: 6, installmentsPaid: 4 },
+  { id: 'd1', description: 'Renegociação Nubank', totalAmount: 12000, remainingAmount: 8500, installmentValue: 1200, debtType: DebtType.RENEGOTIATION, startDate: '2024-01-10', isHighRisk: true },
+  { id: 'd2', description: 'Financiamento Carro', totalAmount: 80000, remainingAmount: 32000, installmentValue: 1200, debtType: DebtType.FINANCING, startDate: '2023-06-01' },
+  { id: 'd3', description: 'Cartão BTG (Atual)', totalAmount: 5000, remainingAmount: 5000, installmentValue: 5000, debtType: DebtType.CREDIT_CARD, startDate: '2024-03-01', isHighRisk: true },
 ];
 
 export const INITIAL_TAX_PAYMENTS: TaxPayment[] = [
@@ -41,5 +42,5 @@ export const INITIAL_TAX_PAYMENTS: TaxPayment[] = [
 export const INITIAL_FIXED_COSTS: FixedCost[] = [
   { id: 'f1', description: 'Aluguel Home Office', totalAmount: 4500, businessPercentage: 0.20, category: 'Habitação' },
   { id: 'f2', description: 'Internet Fibra', totalAmount: 250, businessPercentage: 1.0, category: 'Infra' },
-  { id: 'f3', description: 'Energia Elétrica', totalAmount: 400, businessPercentage: 0.20, category: 'Utilidades' },
+  { id: 'f3', description: 'Contadora', totalAmount: 374.90, businessPercentage: 1.0, category: 'Serviços' },
 ];
