@@ -3,28 +3,28 @@ import { GoogleGenAI } from "@google/genai";
 import { FinancialStats } from '../types.ts';
 
 export const getFinancialTip = async (stats: FinancialStats, annualGoal: number) => {
-  // We initialize the AI right before the call to ensure it uses the latest selected key
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const remaining = annualGoal - stats.totalRevenue;
   
   const prompt = `
-    Você é um CFO (Chief Financial Officer) sênior de uma empresa de serviços Home Office.
-    Sua tarefa é dar conselhos de alta performance.
+    Você é o Consultor Virtual da "Hana Finance". Seu objetivo é ajudar um empresário de Home Office no Brasil.
+    Sua prioridade máxima é o RIGOR na separação entre contas Pessoais e Empresariais.
     
     Dados atuais:
     - Faturamento: R$ ${stats.totalRevenue.toLocaleString('pt-BR')}
-    - Meta Anual: R$ ${annualGoal.toLocaleString('pt-BR')}
-    - Lucro Real: R$ ${stats.realProfit.toLocaleString('pt-BR')}
-    - Leakage (Pessoais na PJ): ${stats.accountMixLeakage.toFixed(1)}%
-    - Falta para a meta: R$ ${remaining.toLocaleString('pt-BR')}
+    - Pró-labore fixo: R$ ${stats.proLabore.toLocaleString('pt-BR')}
+    - Leakage (Despesas Pessoais pagas pela Empresa): R$ ${stats.personalLeakedInBusiness.toLocaleString('pt-BR')} (${stats.accountMixLeakage.toFixed(1)}%)
+    - Lucro Líquido Real (pós impostos e custos): R$ ${stats.realProfit.toLocaleString('pt-BR')}
+    - Falta para a meta de R$ 550k: R$ ${remaining.toLocaleString('pt-BR')}
 
-    Gere uma dica técnica de 2 a 3 frases. 
-    Foque em: Otimização de impostos, separação de contas ou como acelerar o alcance da meta de R$ 550k para ganhar a viagem de Portugal.
+    Gere uma dica estratégica curta (2 frases). 
+    Se o 'Leakage' for acima de 5%, seja firme sobre a separação de contas.
+    Se o lucro for bom, sugira como distribuir nos baldes de Investimento ou Imagem Pessoal.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Upgraded to Pro
+      model: 'gemini-3-pro-preview',
       contents: prompt,
       config: {
         thinkingConfig: { thinkingBudget: 0 },
@@ -34,9 +34,6 @@ export const getFinancialTip = async (stats: FinancialStats, annualGoal: number)
     return response.text || "Mantenha o rigor na separação das contas para proteger seu patrimônio pessoal.";
   } catch (error: any) {
     console.error("Erro no Gemini:", error);
-    if (error?.message?.includes("entity was not found")) {
-       return "NECESSÁRIO_CHAVE"; // Trigger for API Key re-selection
-    }
-    return `Faltam R$ ${remaining.toLocaleString('pt-BR')} para Noronha. Continue faturando!`;
+    return `Seu vazamento pessoal está em ${stats.accountMixLeakage.toFixed(1)}%. Mantenha o foco na meta de R$ 550k!`;
   }
 };

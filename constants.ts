@@ -1,8 +1,18 @@
 
-import { Milestone, Transaction, Debt, TransactionType, TransactionNature } from './types.ts';
+import { Milestone, Transaction, Debt, TransactionType, TransactionNature, ProfitBucket } from './types.ts';
 
 export const ANNUAL_GOAL = 550000;
 export const DEFAULT_ALLOCATION_RATE = 0.20; // 20% default for home rateio
+export const DEFAULT_PRO_LABORE = 12000; // Valor fixo de Pró-labore sugerido
+
+export const PROFIT_BUCKETS: ProfitBucket[] = [
+  { id: 'reinvest', name: 'Reinvestir (Empresa)', percentage: 0.30, color: '#6366f1', icon: 'TrendingUp' },
+  { id: 'lazer', name: 'Lazer & Experiências', percentage: 0.20, color: '#f43f5e', icon: 'Heart' },
+  { id: 'imagem', name: 'Imagem & Roupas', percentage: 0.15, color: '#8b5cf6', icon: 'Shirt' },
+  { id: 'equip', name: 'Equipamentos/Tech', percentage: 0.15, color: '#0ea5e9', icon: 'Zap' },
+  { id: 'doar', name: 'Doação', percentage: 0.10, color: '#10b981', icon: 'Gift' },
+  { id: 'gastar', name: 'Gastar (Livre)', percentage: 0.10, color: '#f59e0b', icon: 'ShoppingBag' },
+];
 
 export const MILESTONES: Milestone[] = [
   { label: 'Primeiro Passo', target: 50000, reward: 'Jantar de Comemoração', icon: '🍽️' },
@@ -15,10 +25,9 @@ export const MILESTONES: Milestone[] = [
 export const INITIAL_TRANSACTIONS: Transaction[] = [
   { id: '1', date: '2024-03-01', description: 'Consultoria Estratégica', amount: 20000, category: 'Serviços', type: TransactionType.INCOME, nature: TransactionNature.BUSINESS },
   { id: '2', date: '2024-03-02', description: 'Aluguel Casa (Home Office)', amount: 4000, category: 'Habitação', type: TransactionType.EXPENSE, nature: TransactionNature.MIXED },
-  { id: '3', date: '2024-03-05', description: 'Café no Iate Clube (Trabalho)', amount: 120, category: 'Ambiente', type: TransactionType.EXPENSE, nature: TransactionNature.BUSINESS },
-  { id: '4', date: '2024-03-10', description: 'Pró-labore', amount: 8000, category: 'Folha', type: TransactionType.EXPENSE, nature: TransactionNature.BUSINESS },
-  { id: '5', date: '2024-03-12', description: 'Luz & Internet', amount: 600, category: 'Habitação', type: TransactionType.EXPENSE, nature: TransactionNature.MIXED },
-  { id: '6', date: '2024-03-15', description: 'Assinatura AI Business', amount: 150, category: 'Software', type: TransactionType.EXPENSE, nature: TransactionNature.BUSINESS },
+  { id: '3', date: '2024-03-05', description: 'Supermercado (Cartão PJ - ERRO)', amount: 850, category: 'Alimentação', type: TransactionType.EXPENSE, nature: TransactionNature.PERSONAL },
+  { id: '4', date: '2024-03-12', description: 'Luz & Internet', amount: 600, category: 'Habitação', type: TransactionType.EXPENSE, nature: TransactionNature.MIXED },
+  { id: '5', date: '2024-03-15', description: 'Assinatura AI Business', amount: 150, category: 'Software', type: TransactionType.EXPENSE, nature: TransactionNature.BUSINESS },
 ];
 
 export const INITIAL_DEBTS: Debt[] = [

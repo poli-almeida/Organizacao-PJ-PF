@@ -20,6 +20,14 @@ export interface Transaction {
   nature: TransactionNature;
 }
 
+export interface TaxPayment {
+  id: string;
+  date: string;
+  taxName: string; // DAS, ISS, IRPJ, etc.
+  amount: number;
+  period: string; // Mês/Ano de competência
+}
+
 export interface Debt {
   id: string;
   description: string;
@@ -37,11 +45,23 @@ export interface Milestone {
   icon: string;
 }
 
+export interface ProfitBucket {
+  id: string;
+  name: string;
+  percentage: number; // 0 to 1
+  color: string;
+  icon: string;
+}
+
 export interface FinancialStats {
   totalRevenue: number;
   totalBusinessCosts: number;
   totalPersonalCosts: number;
+  taxProvision: number;
   realProfit: number;
-  accountMixLeakage: number; // % of personal expenses paid by "business"
+  accountMixLeakage: number;
   goalProgress: number;
+  personalLeakedInBusiness: number;
+  totalTaxesPaid: number;
+  proLabore: number;
 }
