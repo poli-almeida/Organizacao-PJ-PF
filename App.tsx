@@ -516,8 +516,8 @@ const App: React.FC = () => {
                     <PlusCircle size={18} /> Novo Lançamento
                  </button>
               </div>
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                <table className="w-full text-left">
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+                <table className="w-full text-left min-w-[600px]">
                   <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
                     <tr><th className="p-6">Data</th><th className="p-6">Descrição</th><th className="p-6">Natureza</th><th className="p-6 text-right">Valor</th><th className="p-6 text-center">Ações</th></tr>
                   </thead>
@@ -564,8 +564,8 @@ const App: React.FC = () => {
                    <div className="text-2xl font-black text-indigo-600">{((stats.totalTaxesPaid / (stats.taxProvision || 1)) * 100).toFixed(0)}%</div>
                 </div>
               </div>
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                 <table className="w-full text-left">
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+                 <table className="w-full text-left min-w-[600px]">
                     <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
                       <tr><th className="p-6">Data</th><th className="p-6">Imposto</th><th className="p-6">Competência</th><th className="p-6 text-right">Valor</th><th className="p-6 text-center">Excluir</th></tr>
                     </thead>
