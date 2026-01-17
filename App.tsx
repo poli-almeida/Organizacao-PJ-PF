@@ -21,7 +21,9 @@ import {
   Key,
   Pencil,
   Trash2,
-  Save
+  Save,
+  TrendingDown,
+  Wallet
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -84,8 +86,8 @@ const App: React.FC = () => {
   const [txFormData, setTxFormData] = useState<Partial<Transaction>>({
     description: '',
     amount: 0,
-    category: 'Ambiente',
-    type: TransactionType.EXPENSE,
+    category: 'Vendas',
+    type: TransactionType.INCOME,
     nature: TransactionNature.BUSINESS,
     date: new Date().toISOString().split('T')[0]
   });
@@ -179,13 +181,13 @@ const App: React.FC = () => {
   };
 
   // Transaction Handlers
-  const openAddTransaction = () => {
+  const openAddTransaction = (type: TransactionType = TransactionType.INCOME) => {
     setEditingId(null);
     setTxFormData({
       description: '',
       amount: 0,
-      category: 'Ambiente',
-      type: TransactionType.EXPENSE,
+      category: type === TransactionType.INCOME ? 'Vendas' : 'Ambiente',
+      type: type,
       nature: TransactionNature.BUSINESS,
       date: new Date().toISOString().split('T')[0]
     });
@@ -292,7 +294,7 @@ const App: React.FC = () => {
             <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95">Entrar no Dashboard</button>
           </form>
           <div className="mt-10 pt-8 border-t border-white/5">
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">FinanHome v1.1 • Seguro & Local</p>
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">FinanHome v1.2 • Registro de Ganhos</p>
           </div>
         </div>
       </div>
@@ -345,7 +347,7 @@ const App: React.FC = () => {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              Gestão Home Office <ShieldCheck size={20} className="text-emerald-500" />
+              Gestão Financeira <ShieldCheck size={20} className="text-emerald-500" />
             </h1>
             <p className="text-slate-500 text-sm">Dashboard 100% dinâmico e editável.</p>
           </div>
@@ -356,21 +358,26 @@ const App: React.FC = () => {
               <input type="number" value={allocationRate * 100} onChange={(e) => setAllocationRate(Number(e.target.value) / 100)} className="w-8 text-sm font-bold text-indigo-600 outline-none" />
               <span className="text-sm font-bold text-indigo-600">%</span>
             </div>
-            <button onClick={openAddTransaction} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md hover:bg-indigo-700 transition-all flex items-center gap-2">
-              <PlusCircle size={18} /> Novo Gasto
-            </button>
+            <div className="flex gap-2">
+               <button onClick={() => openAddTransaction(TransactionType.INCOME)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-semibold shadow-md hover:bg-emerald-700 transition-all flex items-center gap-2 text-sm">
+                <PlusCircle size={18} /> Registrar Ganho
+              </button>
+              <button onClick={() => openAddTransaction(TransactionType.EXPENSE)} className="bg-slate-800 text-white px-4 py-2.5 rounded-xl font-semibold shadow-md hover:bg-slate-900 transition-all flex items-center gap-2 text-sm">
+                <TrendingDown size={18} /> Novo Gasto
+              </button>
+            </div>
           </div>
         </header>
 
         {activeTab === 'dashboard' && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatCard title="Faturamento Bruto" value={`R$ ${stats.totalRevenue.toLocaleString()}`} icon={<ArrowUpRight className="text-emerald-500" />} />
-              <StatCard title="Lucro Real" value={`R$ ${stats.realProfit.toLocaleString()}`} subtitle="Pós-Custos Business" icon={<Briefcase className="text-indigo-500" />} />
-              <StatCard title="Cafés/Externos" value={`R$ ${transactions.filter(t => t.category === 'Ambiente' && t.nature === TransactionNature.BUSINESS).reduce((acc, t) => acc + t.amount, 0).toLocaleString()}`} icon={<Coffee className="text-amber-500" />} />
+              <StatCard title="Entradas Totais" value={`R$ ${stats.totalRevenue.toLocaleString()}`} icon={<Wallet className="text-emerald-500" />} />
+              <StatCard title="Lucro Real" value={`R$ ${stats.realProfit.toLocaleString()}`} subtitle="Pós-Custos Empresa" icon={<Briefcase className="text-indigo-500" />} />
+              <StatCard title="Custos Empresa" value={`R$ ${stats.totalBusinessCosts.toLocaleString()}`} icon={<TrendingDown className="text-rose-500" />} />
               <div className={`p-6 rounded-2xl shadow-sm border flex flex-col justify-between ${stats.accountMixLeakage > 5 ? 'bg-orange-50 border-orange-200' : 'bg-white border-slate-100'}`}>
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-slate-500 text-sm font-medium">Mix de Contas</h3>
+                  <h3 className="text-slate-500 text-sm font-medium">Furo Pessoal na PJ</h3>
                   <AlertTriangle className={stats.accountMixLeakage > 5 ? 'text-orange-600' : 'text-slate-400'} size={20} />
                 </div>
                 <div className={`text-2xl font-bold ${stats.accountMixLeakage > 5 ? 'text-orange-700' : 'text-slate-900'}`}>{stats.accountMixLeakage.toFixed(1)}%</div>
@@ -391,7 +398,7 @@ const App: React.FC = () => {
                             <h4 className={`text-sm font-bold ${isAchieved ? 'text-emerald-700' : 'text-slate-500'}`}>{m.label}</h4>
                             <p className="text-[10px] text-slate-500">{m.reward}</p>
                           </div>
-                          {isAchieved && <div className="text-[9px] font-black text-emerald-600">UNLOCKED</div>}
+                          {isAchieved && <div className="text-[9px] font-black text-emerald-600">CONQUISTADO</div>}
                         </div>
                       );
                     })}
@@ -424,30 +431,53 @@ const App: React.FC = () => {
           <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in duration-200">
               <div className="p-8 border-b border-slate-100 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-slate-900">{editingId ? 'Editar Registro' : 'Novo Registro'}</h2>
+                <h2 className="text-xl font-bold text-slate-900">{editingId ? 'Editar Lançamento' : 'Novo Lançamento'}</h2>
                 <button onClick={() => setShowTransactionModal(false)} className="text-slate-400 hover:text-slate-600"><X /></button>
               </div>
               <div className="p-8 space-y-6">
+                {/* Seletor de Tipo */}
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                  <button 
+                    onClick={() => setTxFormData({...txFormData, type: TransactionType.INCOME, category: 'Vendas'})}
+                    className={`flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${txFormData.type === TransactionType.INCOME ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}
+                  >
+                    <ArrowUpRight size={18} /> Entrada
+                  </button>
+                  <button 
+                    onClick={() => setTxFormData({...txFormData, type: TransactionType.EXPENSE, category: 'Ambiente'})}
+                    className={`flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${txFormData.type === TransactionType.EXPENSE ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400'}`}
+                  >
+                    <ArrowDownRight size={18} /> Saída
+                  </button>
+                </div>
+
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Descrição</label>
-                  <input type="text" value={txFormData.description} onChange={e => setTxFormData({...txFormData, description: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  <input type="text" placeholder="Ex: Consultoria XYZ ou Aluguel Março" value={txFormData.description} onChange={e => setTxFormData({...txFormData, description: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
                 </div>
+                
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Valor</label>
-                    <input type="number" value={txFormData.amount || ''} onChange={e => setTxFormData({...txFormData, amount: Number(e.target.value)})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+                    <input type="number" value={txFormData.amount || ''} onChange={e => setTxFormData({...txFormData, amount: Number(e.target.value)})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold" />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Natureza</label>
-                    <select value={txFormData.nature} onChange={e => setTxFormData({...txFormData, nature: e.target.value as TransactionNature})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
-                      <option value={TransactionNature.BUSINESS}>Empresa</option>
-                      <option value={TransactionNature.PERSONAL}>Pessoal</option>
+                    <select value={txFormData.nature} onChange={e => setTxFormData({...txFormData, nature: e.target.value as TransactionNature})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold">
+                      <option value={TransactionNature.BUSINESS}>100% Empresa</option>
+                      <option value={TransactionNature.PERSONAL}>100% Pessoal</option>
                       <option value={TransactionNature.MIXED}>Misto (Rateio)</option>
                     </select>
                   </div>
                 </div>
-                <button onClick={handleSaveTransaction} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
-                  <Save size={18} /> {editingId ? 'Atualizar Lançamento' : 'Salvar Lançamento'}
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Categoria</label>
+                  <input type="text" placeholder="Ex: Marketing, Vendas, Habitação..." value={txFormData.category} onChange={e => setTxFormData({...txFormData, category: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+                </div>
+
+                <button onClick={handleSaveTransaction} className={`w-full py-4 text-white font-bold rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 ${txFormData.type === TransactionType.INCOME ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'}`}>
+                  <Save size={18} /> {editingId ? 'Atualizar Lançamento' : 'Salvar Registro'}
                 </button>
               </div>
             </div>
@@ -489,7 +519,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Tabelas e Conteúdo Tabs */}
+        {/* Listagem de Transações */}
         {activeTab === 'transactions' && (
           <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
              <table className="w-full text-left">
@@ -506,13 +536,20 @@ const App: React.FC = () => {
                   {transactions.map(t => (
                     <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4 text-xs text-slate-400">{new Date(t.date).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 text-sm font-semibold">{t.description}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-slate-800">{t.description}</span>
+                          <span className="text-[10px] text-slate-400 font-medium">{t.category}</span>
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase ${t.nature === TransactionNature.BUSINESS ? 'border-indigo-200 text-indigo-700' : t.nature === TransactionNature.PERSONAL ? 'border-orange-200 text-orange-700' : 'border-amber-200 text-amber-700'}`}>
                           {t.nature === TransactionNature.BUSINESS ? 'Business' : t.nature === TransactionNature.PERSONAL ? 'Pessoal' : 'Misto'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right font-bold">R$ {t.amount.toLocaleString()}</td>
+                      <td className={`px-6 py-4 text-right font-bold ${t.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-slate-900'}`}>
+                        {t.type === TransactionType.INCOME ? '+' : ''} R$ {t.amount.toLocaleString()}
+                      </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button onClick={() => openEditTransaction(t)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"><Pencil size={14} /></button>
@@ -526,6 +563,7 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {/* Aba de Dívidas */}
         {activeTab === 'debts' && (
           <div className="space-y-8">
             <div className="flex justify-end">
