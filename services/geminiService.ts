@@ -39,7 +39,7 @@ export const getFinancialTip = async (stats: any, annualGoal: number, debts: Deb
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview', // Alterado de pro para flash para maior velocidade
       contents: prompt,
       config: {
         thinkingConfig: { thinkingBudget: 0 },
