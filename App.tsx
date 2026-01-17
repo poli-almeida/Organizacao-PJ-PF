@@ -7,10 +7,10 @@ import {
   TrendingUp, 
   AlertTriangle, 
   Lightbulb,
-  ArrowUpRight,
   X,
   ShieldCheck,
   Trash2,
+  Pencil,
   Wallet,
   Zap,
   PieChart as PieChartIcon,
@@ -57,7 +57,6 @@ import { getFinancialTip } from './services/geminiService.ts';
 
 const ACCESS_PIN = "2025";
 
-// Função de formatação aprimorada para máxima clareza
 export const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -67,7 +66,20 @@ export const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-// Componente Memoizado para evitar re-renders desnecessários
+const parseSmartNumber = (val: string | number): number => {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return val;
+  
+  let cleaned = val.toString().replace(/\s/g, '');
+  if (cleaned.includes(',') && cleaned.includes('.')) {
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  } else if (cleaned.includes(',')) {
+    cleaned = cleaned.replace(',', '.');
+  }
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+};
+
 const TabularNumber = React.memo(({ value, className = "" }: { value: string | number, className?: string }) => (
   <span className={`tabular-nums ${className}`} style={{ fontVariantNumeric: 'tabular-nums' }}>
     {value}
@@ -75,13 +87,11 @@ const TabularNumber = React.memo(({ value, className = "" }: { value: string | n
 ));
 
 const App: React.FC = () => {
-  // Auth & Navigation
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('hana_auth') === 'true');
   const [pinInput, setPinInput] = useState('');
   const [authError, setAuthError] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'taxes' | 'debts' | 'buckets'>('dashboard');
 
-  // Core Data
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('hana_txs');
     return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
@@ -95,37 +105,36 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
-  // Settings
   const [allocationRate, setAllocationRate] = useState(DEFAULT_ALLOCATION_RATE);
   const [proLabore, setProLabore] = useState(() => Number(localStorage.getItem('hana_prolabore')) || DEFAULT_PRO_LABORE);
   const [taxRate] = useState(0.06);
 
-  // UI States
   const [tip, setTip] = useState<string>('Clique para insight do CFO...');
   const [isTipLoading, setIsTipLoading] = useState(false);
+  
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showTaxModal, setShowTaxModal] = useState(false);
   const [showDebtModal, setShowDebtModal] = useState(false);
 
-  const [txFormData, setTxFormData] = useState<Partial<Transaction>>({
-    description: '', amount: 0, category: 'Vendas', type: TransactionType.INCOME, nature: TransactionNature.BUSINESS, date: new Date().toISOString().split('T')[0]
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [txFormData, setTxFormData] = useState({
+    description: '', amount: '', category: 'Vendas', type: TransactionType.INCOME, nature: TransactionNature.BUSINESS, date: new Date().toISOString().split('T')[0]
   });
 
-  const [taxFormData, setTaxFormData] = useState<Partial<TaxPayment>>({
-    taxName: 'DAS - Simples Nacional', amount: 0, date: new Date().toISOString().split('T')[0], period: ''
+  const [taxFormData, setTaxFormData] = useState({
+    taxName: 'DAS - Simples Nacional', amount: '', date: new Date().toISOString().split('T')[0], period: ''
   });
 
-  const [debtFormData, setDebtFormData] = useState<Partial<Debt>>({
-    description: '', totalAmount: 0, remainingAmount: 0, installmentValue: 0
+  const [debtFormData, setDebtFormData] = useState({
+    description: '', totalAmount: '', remainingAmount: '', installmentValue: ''
   });
 
-  // Storage Effects
   useEffect(() => { localStorage.setItem('hana_txs', JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem('hana_debts', JSON.stringify(debts)); }, [debts]);
   useEffect(() => { localStorage.setItem('hana_tax_paid', JSON.stringify(taxPayments)); }, [taxPayments]);
   useEffect(() => { localStorage.setItem('hana_prolabore', proLabore.toString()); }, [proLabore]);
 
-  // Financial Engine - Cálculos robustos com tratamento de zero
   const stats = useMemo(() => {
     let revenue = 0;
     let businessOperatingCosts = 0;
@@ -157,7 +166,6 @@ const App: React.FC = () => {
     };
   }, [transactions, taxPayments, allocationRate, taxRate, proLabore]);
 
-  // Gamification Logic
   const nextMilestone = useMemo(() => {
     return MILESTONES.find(m => stats.totalRevenue < m.target) || MILESTONES[MILESTONES.length - 1];
   }, [stats.totalRevenue]);
@@ -181,7 +189,6 @@ const App: React.FC = () => {
     }));
   }, [stats.realProfit]);
 
-  // Handlers memoizados para performance
   const handleAuth = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (pinInput === ACCESS_PIN) { setIsAuthenticated(true); localStorage.setItem('hana_auth', 'true'); }
@@ -196,11 +203,34 @@ const App: React.FC = () => {
     setIsTipLoading(false);
   }, [stats, isTipLoading]);
 
+  // Transações
+  const handleEditTransaction = (tx: Transaction) => {
+    setEditingId(tx.id);
+    setTxFormData({
+      description: tx.description,
+      amount: tx.amount.toString().replace('.', ','),
+      category: tx.category,
+      type: tx.type,
+      nature: tx.nature,
+      date: tx.date
+    });
+    setShowTransactionModal(true);
+  };
+
   const handleSaveTransaction = useCallback(() => {
-    if (!txFormData.description || !txFormData.amount) return;
-    setTransactions(prev => [{ ...txFormData, id: Math.random().toString(36).substr(2, 9) } as Transaction, ...prev]);
+    const amount = parseSmartNumber(txFormData.amount);
+    if (!txFormData.description || !amount) return;
+    
+    if (editingId) {
+      setTransactions(prev => prev.map(t => t.id === editingId ? { ...t, ...txFormData, amount } : t));
+    } else {
+      setTransactions(prev => [{ ...txFormData, amount, id: Math.random().toString(36).substr(2, 9) } as Transaction, ...prev]);
+    }
+    
     setShowTransactionModal(false);
-  }, [txFormData]);
+    setEditingId(null);
+    setTxFormData({ description: '', amount: '', category: 'Vendas', type: TransactionType.INCOME, nature: TransactionNature.BUSINESS, date: new Date().toISOString().split('T')[0] });
+  }, [txFormData, editingId]);
 
   const handleDeleteTransaction = useCallback((id: string) => {
     if (confirm('Excluir este lançamento?')) {
@@ -208,11 +238,32 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Impostos
+  const handleEditTax = (tax: TaxPayment) => {
+    setEditingId(tax.id);
+    setTaxFormData({
+      taxName: tax.taxName,
+      amount: tax.amount.toString().replace('.', ','),
+      date: tax.date,
+      period: tax.period
+    });
+    setShowTaxModal(true);
+  };
+
   const handleSaveTax = useCallback(() => {
-     if (!taxFormData.amount) return;
-     setTaxPayments(prev => [{...taxFormData, id: Math.random().toString(36).substr(2, 9)} as TaxPayment, ...prev]);
+     const amount = parseSmartNumber(taxFormData.amount);
+     if (!amount) return;
+     
+     if (editingId) {
+       setTaxPayments(prev => prev.map(t => t.id === editingId ? { ...t, ...taxFormData, amount } : t));
+     } else {
+       setTaxPayments(prev => [{ ...taxFormData, amount, id: Math.random().toString(36).substr(2, 9) } as TaxPayment, ...prev]);
+     }
+     
      setShowTaxModal(false);
-  }, [taxFormData]);
+     setEditingId(null);
+     setTaxFormData({ taxName: 'DAS - Simples Nacional', amount: '', date: new Date().toISOString().split('T')[0], period: '' });
+  }, [taxFormData, editingId]);
 
   const handleDeleteTax = useCallback((id: string) => {
     if (confirm('Excluir registro de imposto?')) {
@@ -220,15 +271,47 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Dívidas
+  const handleEditDebt = (debt: Debt) => {
+    setEditingId(debt.id);
+    setDebtFormData({
+      description: debt.description,
+      totalAmount: debt.totalAmount.toString().replace('.', ','),
+      remainingAmount: debt.remainingAmount.toString().replace('.', ','),
+      installmentValue: debt.installmentValue.toString().replace('.', ',')
+    });
+    setShowDebtModal(true);
+  };
+
   const handleSaveDebt = useCallback(() => {
-    if (!debtFormData.description || !debtFormData.totalAmount) return;
-    const sanitizedDebt = {
-      ...debtFormData,
-      remainingAmount: Math.max(0, Math.min(debtFormData.remainingAmount || 0, debtFormData.totalAmount || 0))
-    };
-    setDebts(prev => [{ ...sanitizedDebt, id: Math.random().toString(36).substr(2, 9) } as Debt, ...prev]);
+    const total = parseSmartNumber(debtFormData.totalAmount);
+    const remaining = parseSmartNumber(debtFormData.remainingAmount);
+    const installment = parseSmartNumber(debtFormData.installmentValue);
+    
+    if (!debtFormData.description || !total) return;
+    
+    if (editingId) {
+      setDebts(prev => prev.map(d => d.id === editingId ? { 
+        ...d, 
+        ...debtFormData, 
+        totalAmount: total, 
+        remainingAmount: Math.max(0, Math.min(remaining, total)),
+        installmentValue: installment
+      } : d));
+    } else {
+      setDebts(prev => [{ 
+        ...debtFormData, 
+        totalAmount: total, 
+        remainingAmount: Math.max(0, Math.min(remaining, total)),
+        installmentValue: installment,
+        id: Math.random().toString(36).substr(2, 9) 
+      } as Debt, ...prev]);
+    }
+    
     setShowDebtModal(false);
-  }, [debtFormData]);
+    setEditingId(null);
+    setDebtFormData({ description: '', totalAmount: '', remainingAmount: '', installmentValue: '' });
+  }, [debtFormData, editingId]);
 
   const handleDeleteDebt = useCallback((id: string) => {
     if (confirm('Excluir esta dívida?')) {
@@ -344,7 +427,7 @@ const App: React.FC = () => {
                    <span className="text-sm font-black text-slate-700 tabular-nums">{allocationRate*100}%</span>
                 </div>
              </div>
-             <button onClick={() => setShowTransactionModal(true)} className="bg-indigo-600 text-white p-4 rounded-2xl shadow-xl shadow-indigo-600/30 hover:scale-105 transition-all"><PlusCircle size={24} /></button>
+             <button onClick={() => { setEditingId(null); setShowTransactionModal(true); }} className="bg-indigo-600 text-white p-4 rounded-2xl shadow-xl shadow-indigo-600/30 hover:scale-105 transition-all"><PlusCircle size={24} /></button>
           </div>
         </header>
 
@@ -429,9 +512,8 @@ const App: React.FC = () => {
                           outerRadius={110} 
                           paddingAngle={8} 
                           dataKey="value"
-                          isAnimationActive={false} // Performance boost: desativa animação de entrada
+                          isAnimationActive={false}
                         >
-                          {/* Cores mapeadas via dados para estabilidade */}
                           {[0,1,2,3,4,5].map((_, i) => <Cell key={i} className="outline-none" />)}
                         </Pie>
                         <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }} />
@@ -465,7 +547,10 @@ const App: React.FC = () => {
                             <div key={d.id} className="space-y-1.5 group">
                                <div className="flex justify-between items-center">
                                   <span className="text-xs font-bold text-slate-700">{d.description}</span>
-                                  <span className="text-[11px] font-black text-rose-500 tabular-nums"><TabularNumber value={formatCurrency(d.remainingAmount)} /></span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-black text-rose-500 tabular-nums"><TabularNumber value={formatCurrency(d.remainingAmount)} /></span>
+                                    <button onClick={() => handleEditDebt(d)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-indigo-500 transition-all"><Pencil size={12} /></button>
+                                  </div>
                                </div>
                                <div className="w-full bg-slate-50 h-1.5 rounded-full overflow-hidden">
                                   <div className="bg-rose-500 h-full" style={{ width: `${Math.max(0, Math.min(100, ((d.totalAmount - d.remainingAmount) / (d.totalAmount || 1)) * 100))}%` }}></div>
@@ -501,7 +586,7 @@ const App: React.FC = () => {
            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                  <h2 className="text-2xl font-bold">Fluxo de Caixa Estratégico</h2>
-                 <button onClick={() => setShowTransactionModal(true)} className="w-full sm:w-auto bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all">
+                 <button onClick={() => { setEditingId(null); setShowTransactionModal(true); }} className="w-full sm:w-auto bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all">
                     <PlusCircle size={18} /> Novo Lançamento
                  </button>
               </div>
@@ -522,7 +607,10 @@ const App: React.FC = () => {
                         </td>
                         <td className={`p-6 text-right font-black tabular-nums ${t.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-slate-900'}`}>{t.type === TransactionType.INCOME ? '+' : ''} {formatCurrency(t.amount)}</td>
                         <td className="p-6 text-center">
-                          <button onClick={() => handleDeleteTransaction(t.id)} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"><Trash2 size={16} /></button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button onClick={() => handleEditTransaction(t)} className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"><Pencil size={16} /></button>
+                            <button onClick={() => handleDeleteTransaction(t.id)} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"><Trash2 size={16} /></button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -537,7 +625,7 @@ const App: React.FC = () => {
            <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-300">
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <h2 className="text-2xl font-bold">Saúde Tributária</h2>
-                <button onClick={() => setShowTaxModal(true)} className="w-full sm:w-auto bg-amber-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:scale-105 active:scale-95 transition-all">Registrar Guia Paga</button>
+                <button onClick={() => { setEditingId(null); setShowTaxModal(true); }} className="w-full sm:w-auto bg-amber-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:scale-105 active:scale-95 transition-all">Registrar Guia Paga</button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title="Total Pago (Ano)" value={<TabularNumber value={formatCurrency(stats.totalTaxesPaid)} />} icon={<Landmark className="text-amber-600" />} />
@@ -552,7 +640,7 @@ const App: React.FC = () => {
               <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
                  <table className="w-full text-left min-w-[700px]">
                     <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
-                      <tr><th className="p-6">Data</th><th className="p-6">Imposto</th><th className="p-6">Competência</th><th className="p-6 text-right">Valor</th><th className="p-6 text-center">Excluir</th></tr>
+                      <tr><th className="p-6">Data</th><th className="p-6">Imposto</th><th className="p-6">Competência</th><th className="p-6 text-right">Valor</th><th className="p-6 text-center">Ações</th></tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {taxPayments.map(p => (
@@ -562,7 +650,10 @@ const App: React.FC = () => {
                           <td className="p-6 text-slate-500 text-sm">{p.period}</td>
                           <td className="p-6 text-right font-black text-amber-600 tabular-nums">{formatCurrency(p.amount)}</td>
                           <td className="p-6 text-center">
-                            <button onClick={() => handleDeleteTax(p.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={16} /></button>
+                            <div className="flex items-center justify-center gap-2">
+                              <button onClick={() => handleEditTax(p)} className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"><Pencil size={16} /></button>
+                              <button onClick={() => handleDeleteTax(p.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={16} /></button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -577,7 +668,7 @@ const App: React.FC = () => {
           <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-300">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <h2 className="text-2xl font-bold">Gestão de Dívidas & Parcelados</h2>
-              <button onClick={() => setShowDebtModal(true)} className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:scale-105 active:scale-95 transition-all">Cadastrar Dívida</button>
+              <button onClick={() => { setEditingId(null); setShowDebtModal(true); }} className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:scale-105 active:scale-95 transition-all">Cadastrar Dívida</button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
               {debts.map(d => {
@@ -590,7 +681,10 @@ const App: React.FC = () => {
                         <h4 className="font-bold text-slate-800 text-xl tracking-tight">{d.description}</h4>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em]">Quitação</p>
                       </div>
-                      <button onClick={() => handleDeleteDebt(d.id)} className="text-slate-300 hover:text-rose-500 transition-colors p-2 hover:bg-rose-50 rounded-xl"><Trash2 size={20} /></button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleEditDebt(d)} className="text-slate-300 hover:text-indigo-600 transition-colors p-2 hover:bg-indigo-50 rounded-xl"><Pencil size={18} /></button>
+                        <button onClick={() => handleDeleteDebt(d.id)} className="text-slate-300 hover:text-rose-500 transition-colors p-2 hover:bg-rose-50 rounded-xl"><Trash2 size={20} /></button>
+                      </div>
                     </div>
                     <div className="space-y-3">
                       <div className="flex justify-between items-end">
@@ -658,11 +752,11 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Modals - Simplificados e Rápidos */}
+        {/* Modals */}
         {showTransactionModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-in zoom-in duration-150">
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold text-slate-800">Novo Lançamento</h2><button onClick={() => setShowTransactionModal(false)} className="p-2 hover:bg-slate-50 rounded-full transition-colors"><X /></button></div>
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold text-slate-800">{editingId ? 'Editar Lançamento' : 'Novo Lançamento'}</h2><button onClick={() => { setShowTransactionModal(false); setEditingId(null); }} className="p-2 hover:bg-slate-50 rounded-full transition-colors"><X /></button></div>
               <div className="p-8 space-y-6">
                 <div className="flex bg-slate-50 p-1.5 rounded-2xl">
                   <button onClick={() => setTxFormData({...txFormData, type: TransactionType.INCOME})} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${txFormData.type === TransactionType.INCOME ? 'bg-white text-emerald-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>Entrada</button>
@@ -670,7 +764,7 @@ const App: React.FC = () => {
                 </div>
                 <input type="text" placeholder="Descrição" value={txFormData.description} onChange={e => setTxFormData({...txFormData, description: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:bg-white focus:border-indigo-300 font-medium" />
                 <div className="grid grid-cols-2 gap-4">
-                  <input type="number" step="0.01" value={txFormData.amount || ''} onChange={e => setTxFormData({...txFormData, amount: Number(e.target.value)})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-black tabular-nums" placeholder="Valor (R$)" />
+                  <input type="text" value={txFormData.amount} onChange={e => setTxFormData({...txFormData, amount: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-black tabular-nums" placeholder="Valor (Ex: 1500,50)" />
                   <select value={txFormData.nature} onChange={e => setTxFormData({...txFormData, nature: e.target.value as TransactionNature})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm">
                     <option value={TransactionNature.BUSINESS}>Empresa (PJ)</option>
                     <option value={TransactionNature.PERSONAL}>Pessoal (Leak!)</option>
@@ -686,7 +780,7 @@ const App: React.FC = () => {
         {showTaxModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-in zoom-in duration-150">
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold text-slate-800">Registrar Imposto</h2><button onClick={() => setShowTaxModal(false)}><X /></button></div>
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold text-slate-800">{editingId ? 'Editar Imposto' : 'Registrar Imposto'}</h2><button onClick={() => { setShowTaxModal(false); setEditingId(null); }}><X /></button></div>
               <div className="p-8 space-y-6">
                 <select value={taxFormData.taxName} onChange={e => setTaxFormData({...taxFormData, taxName: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold">
                   <option value="DAS - Simples Nacional">DAS - Simples Nacional</option>
@@ -695,10 +789,10 @@ const App: React.FC = () => {
                   <option value="IRPF - Pessoa Física">IRPF - Pessoa Física</option>
                 </select>
                 <div className="grid grid-cols-2 gap-4">
-                   <input type="number" step="0.01" value={taxFormData.amount || ''} onChange={e => setTaxFormData({...taxFormData, amount: Number(e.target.value)})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-black tabular-nums" placeholder="Valor" />
+                   <input type="text" value={taxFormData.amount} onChange={e => setTaxFormData({...taxFormData, amount: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-black tabular-nums" placeholder="Valor" />
                    <input type="text" placeholder="MM/AA" value={taxFormData.period} onChange={e => setTaxFormData({...taxFormData, period: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-medium text-center" />
                 </div>
-                <button onClick={handleSaveTax} className="w-full py-5 bg-amber-600 text-white font-black rounded-2xl shadow-xl hover:bg-amber-700 transition-all">Registrar Pagamento</button>
+                <button onClick={handleSaveTax} className="w-full py-5 bg-amber-600 text-white font-black rounded-2xl shadow-xl hover:bg-amber-700 transition-all">Confirmar</button>
               </div>
             </div>
           </div>
@@ -707,14 +801,23 @@ const App: React.FC = () => {
         {showDebtModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-in zoom-in duration-150">
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold text-slate-800">Nova Dívida</h2><button onClick={() => setShowDebtModal(false)}><X /></button></div>
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold text-slate-800">{editingId ? 'Editar Dívida' : 'Nova Dívida'}</h2><button onClick={() => { setShowDebtModal(false); setEditingId(null); }}><X /></button></div>
               <div className="p-8 space-y-5">
                 <input type="text" placeholder="Descrição (Ex: Notebook)" value={debtFormData.description} onChange={e => setDebtFormData({...debtFormData, description: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-medium" />
                 <div className="grid grid-cols-2 gap-4">
-                  <input type="number" placeholder="Total" value={debtFormData.totalAmount || ''} onChange={e => setDebtFormData({...debtFormData, totalAmount: Number(e.target.value)})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none tabular-nums" />
-                  <input type="number" placeholder="Saldo" value={debtFormData.remainingAmount || ''} onChange={e => setDebtFormData({...debtFormData, remainingAmount: Number(e.target.value)})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-black tabular-nums" />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Total</label>
+                    <input type="text" placeholder="Ex: 80.000,00" value={debtFormData.totalAmount} onChange={e => setDebtFormData({...debtFormData, totalAmount: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none tabular-nums" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Saldo Atual</label>
+                    <input type="text" placeholder="Ex: 32.500,00" value={debtFormData.remainingAmount} onChange={e => setDebtFormData({...debtFormData, remainingAmount: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-black tabular-nums" />
+                  </div>
                 </div>
-                <input type="number" placeholder="Parcela (R$)" value={debtFormData.installmentValue || ''} onChange={e => setDebtFormData({...debtFormData, installmentValue: Number(e.target.value)})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none tabular-nums" />
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Valor da Parcela</label>
+                  <input type="text" placeholder="Ex: 1.200,00" value={debtFormData.installmentValue} onChange={e => setDebtFormData({...debtFormData, installmentValue: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none tabular-nums" />
+                </div>
                 <button onClick={handleSaveDebt} className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-700 transition-all">Salvar</button>
               </div>
             </div>
