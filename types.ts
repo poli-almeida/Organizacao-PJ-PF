@@ -23,9 +23,9 @@ export interface Transaction {
 export interface TaxPayment {
   id: string;
   date: string;
-  taxName: string; // DAS, ISS, IRPJ, etc.
+  taxName: string;
   amount: number;
-  period: string; // Mês/Ano de competência
+  period: string;
 }
 
 export interface Debt {
@@ -38,6 +38,14 @@ export interface Debt {
   installmentsPaid: number;
 }
 
+export interface FixedCost {
+  id: string;
+  description: string;
+  totalAmount: number;
+  businessPercentage: number; // Ex: 0.20 para 20%
+  category: string;
+}
+
 export interface Milestone {
   label: string;
   target: number;
@@ -48,7 +56,7 @@ export interface Milestone {
 export interface ProfitBucket {
   id: string;
   name: string;
-  percentage: number; // 0 to 1
+  percentage: number;
   color: string;
   icon: string;
 }
@@ -64,4 +72,5 @@ export interface FinancialStats {
   personalLeakedInBusiness: number;
   totalTaxesPaid: number;
   proLabore: number;
+  monthlyFixedCostsBusiness: number;
 }

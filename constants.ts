@@ -1,5 +1,5 @@
 
-import { Milestone, Transaction, Debt, TransactionType, TransactionNature, ProfitBucket } from './types.ts';
+import { Milestone, Transaction, Debt, TransactionType, TransactionNature, ProfitBucket, TaxPayment, FixedCost } from './types.ts';
 
 export const ANNUAL_GOAL = 550000;
 export const DEFAULT_ALLOCATION_RATE = 0.20; // 20% default for home rateio
@@ -24,13 +24,22 @@ export const MILESTONES: Milestone[] = [
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [
   { id: '1', date: '2024-03-01', description: 'Consultoria Estratégica', amount: 20000, category: 'Serviços', type: TransactionType.INCOME, nature: TransactionNature.BUSINESS },
-  { id: '2', date: '2024-03-02', description: 'Aluguel Casa (Home Office)', amount: 4000, category: 'Habitação', type: TransactionType.EXPENSE, nature: TransactionNature.MIXED },
   { id: '3', date: '2024-03-05', description: 'Supermercado (Cartão PJ - ERRO)', amount: 850, category: 'Alimentação', type: TransactionType.EXPENSE, nature: TransactionNature.PERSONAL },
-  { id: '4', date: '2024-03-12', description: 'Luz & Internet', amount: 600, category: 'Habitação', type: TransactionType.EXPENSE, nature: TransactionNature.MIXED },
   { id: '5', date: '2024-03-15', description: 'Assinatura AI Business', amount: 150, category: 'Software', type: TransactionType.EXPENSE, nature: TransactionNature.BUSINESS },
 ];
 
 export const INITIAL_DEBTS: Debt[] = [
   { id: 'd1', description: 'Financiamento Carro', totalAmount: 80000, remainingAmount: 32000, installmentValue: 1200, installmentsTotal: 60, installmentsPaid: 40 },
   { id: 'd2', description: 'IPVA 2024', totalAmount: 2400, remainingAmount: 800, installmentValue: 400, installmentsTotal: 6, installmentsPaid: 4 },
+];
+
+export const INITIAL_TAX_PAYMENTS: TaxPayment[] = [
+  { id: 'tax1', date: '2024-02-20', taxName: 'DAS - Simples Nacional', amount: 1200, period: '01/24' },
+  { id: 'tax2', date: '2024-03-20', taxName: 'DAS - Simples Nacional', amount: 1250, period: '02/24' },
+];
+
+export const INITIAL_FIXED_COSTS: FixedCost[] = [
+  { id: 'f1', description: 'Aluguel Home Office', totalAmount: 4500, businessPercentage: 0.20, category: 'Habitação' },
+  { id: 'f2', description: 'Internet Fibra', totalAmount: 250, businessPercentage: 1.0, category: 'Infra' },
+  { id: 'f3', description: 'Energia Elétrica', totalAmount: 400, businessPercentage: 0.20, category: 'Utilidades' },
 ];
