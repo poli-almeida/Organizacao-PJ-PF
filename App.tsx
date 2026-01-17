@@ -31,7 +31,10 @@ import {
   Clock,
   Heart,
   Shirt,
-  Gift
+  Gift,
+  Target,
+  ChevronRight,
+  ArrowRightCircle // Adicionado ícone que estava faltando
 } from 'lucide-react';
 import { 
   PieChart,
@@ -114,7 +117,7 @@ const getBucketIcon = (iconName: string) => {
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('hana_auth') === 'true');
   const [pinInput, setPinInput] = useState('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'taxes' | 'debts' | 'buckets' | 'fixed-costs'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'taxes' | 'debts' | 'buckets' | 'fixed-costs' | 'insights'>('dashboard');
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('hana_txs');
@@ -134,8 +137,10 @@ const App: React.FC = () => {
   });
   
   const [proLabore, setProLabore] = useState(() => Number(localStorage.getItem('hana_prolabore')) || DEFAULT_PRO_LABORE);
+  const [ticketMedio, setTicketMedio] = useState(5000);
   const [taxRate] = useState(0.06);
 
+  const [fullInsight, setFullInsight] = useState<string | null>(null);
   const [tip, setTip] = useState<string>('Clique para insight do CFO...');
   const [isTipLoading, setIsTipLoading] = useState(false);
   
@@ -228,13 +233,43 @@ const App: React.FC = () => {
   }, [transactions, fixedCosts]);
 
   const monthlyFlowData = useMemo(() => {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
-    return months.map((m, idx) => ({
-      name: m,
-      Receita: idx === 2 ? stats.totalRevenue : stats.totalRevenue * (0.8 + Math.random() * 0.4),
-      Custos: idx === 2 ? stats.totalBusinessCosts : stats.totalBusinessCosts * (0.9 + Math.random() * 0.2),
-    }));
-  }, [stats.totalRevenue, stats.totalBusinessCosts]);
+    const monthsShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const currentYear = new Date().getFullYear();
+    
+    const flowMap: Record<number, { name: string, Receita: number, Custos: number }> = {};
+    monthsShort.forEach((m, i) => {
+      flowMap[i] = { name: m, Receita: 0, Custos: 0 };
+    });
+
+    transactions.forEach(t => {
+      const d = new Date(t.date);
+      if (d.getFullYear() === currentYear) {
+        const m = d.getMonth();
+        if (t.type === TransactionType.INCOME) {
+          flowMap[m].Receita += t.amount;
+        } else {
+          if (t.nature === TransactionNature.BUSINESS) flowMap[m].Custos += t.amount;
+          else if (t.nature === TransactionNature.MIXED) flowMap[m].Custos += t.amount * 0.20;
+        }
+      }
+    });
+
+    taxPayments.forEach(p => {
+      const d = new Date(p.date);
+      if (d.getFullYear() === currentYear) {
+        const m = d.getMonth();
+        flowMap[m].Custos += p.amount;
+      }
+    });
+
+    const currentMonthIndex = new Date().getMonth();
+    for (let i = 0; i <= currentMonthIndex; i++) {
+      flowMap[i].Custos += stats.monthlyFixedCostsBusiness;
+      flowMap[i].Custos += stats.proLabore;
+    }
+
+    return Object.values(flowMap).slice(0, currentMonthIndex + 1);
+  }, [transactions, taxPayments, stats.monthlyFixedCostsBusiness, stats.proLabore]);
 
   const nextMilestone = useMemo(() => {
     return MILESTONES.find(m => stats.totalRevenue < m.target) || MILESTONES[MILESTONES.length - 1];
@@ -251,10 +286,11 @@ const App: React.FC = () => {
   const handleFetchTip = useCallback(async () => {
     if (isTipLoading) return;
     setIsTipLoading(true);
-    const newTip = await getFinancialTip(stats as any, ANNUAL_GOAL);
-    setTip(newTip);
+    const newTip = await getFinancialTip(stats, ANNUAL_GOAL, debts, ticketMedio);
+    setTip(newTip.slice(0, 100) + '...');
+    setFullInsight(newTip);
     setIsTipLoading(false);
-  }, [stats, isTipLoading]);
+  }, [stats, isTipLoading, debts, ticketMedio]);
 
   // Handlers CRUD
   const handleEditTransaction = (tx: Transaction) => {
@@ -376,6 +412,7 @@ const App: React.FC = () => {
             { id: 'buckets', label: 'Baldes de Lucro', icon: Gem },
             { id: 'taxes', label: 'Impostos (BR)', icon: Landmark },
             { id: 'debts', label: 'Dívidas & Risco', icon: CreditCard },
+            { id: 'insights', label: 'Dicas & Insights', icon: Lightbulb },
           ].map((tab) => (
             <button 
               key={tab.id}
@@ -390,13 +427,12 @@ const App: React.FC = () => {
           <div className="bg-slate-900 rounded-2xl p-5 text-white">
             <div className="flex items-center gap-2 text-indigo-400 font-bold mb-2"><Lightbulb size={16} /> <span className="text-[10px] uppercase tracking-widest">IA Strategic Advisor</span></div>
             <p className="text-[11px] leading-relaxed opacity-80 mb-4">{isTipLoading ? 'Analisando...' : tip}</p>
-            <button onClick={handleFetchTip} disabled={isTipLoading} className="w-full py-2 bg-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-500 disabled:opacity-50 uppercase tracking-widest">Insight</button>
+            <button onClick={handleFetchTip} disabled={isTipLoading} className="w-full py-2 bg-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-500 disabled:opacity-50 uppercase tracking-widest">Análise CFO</button>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 p-4 md:p-12 space-y-10 overflow-x-hidden">
-        {/* --- DASHBOARD --- */}
+      <main className="flex-1 p-4 md:p-12 space-y-10 overflow-x-auto">
         {activeTab === 'dashboard' && (
           <div className="animate-in fade-in duration-500 space-y-10">
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -432,7 +468,7 @@ const App: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                <h3 className="font-bold text-lg mb-8 flex items-center gap-2 text-slate-800"><BarChart3 className="text-indigo-600" /> Fluxo de Caixa Mensal</h3>
+                <h3 className="font-bold text-lg mb-8 flex items-center gap-2 text-slate-800"><BarChart3 className="text-indigo-600" /> Fluxo de Caixa Mensal (Real)</h3>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyFlowData}>
@@ -463,7 +499,6 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Gamification Map */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                <div className="space-y-6">
                  <GoalCard progress={stats.totalRevenue} target={ANNUAL_GOAL} />
@@ -504,7 +539,113 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* --- TRANSACTIONS --- */}
+        {activeTab === 'insights' && (
+          <div className="animate-in slide-in-from-bottom-4 duration-300 space-y-10">
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Dicas & Insights Estratégicos</h2>
+                <p className="text-sm text-slate-500">Análise profunda da IA CFO para aceleração de lucros.</p>
+              </div>
+              <div className="bg-white border p-3 rounded-2xl flex items-center gap-4 shadow-sm border-slate-100">
+                <div className="text-center px-2">
+                   <p className="text-[9px] uppercase font-bold text-slate-400 mb-1">Ticket Médio (Vendas)</p>
+                   <input 
+                     type="number" 
+                     value={ticketMedio} 
+                     onChange={e => setTicketMedio(Number(e.target.value))} 
+                     className="w-24 text-sm font-black text-indigo-600 outline-none bg-transparent tabular-nums" 
+                   />
+                </div>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-2 h-full bg-indigo-600"></div>
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
+                    <Target size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-xl text-slate-800">CFO Business Analysis</h3>
+                    <p className="text-xs text-slate-400 font-bold uppercase">Relatório Gerado via Gemini 3 Pro</p>
+                  </div>
+                </div>
+
+                {!fullInsight ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                    <div className="p-6 bg-slate-50 rounded-full text-slate-300">
+                      <Lightbulb size={48} />
+                    </div>
+                    <div className="max-w-md">
+                      <p className="text-slate-500 font-medium">Sua CFO Estratégica está pronta para analisar seus dados e traçar o plano de saída do vermelho.</p>
+                      <button 
+                        onClick={handleFetchTip} 
+                        disabled={isTipLoading}
+                        className="mt-6 px-8 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-200 hover:scale-105 transition-all flex items-center gap-2 mx-auto"
+                      >
+                        {isTipLoading ? 'Calculando Cenários...' : 'GERAR ANÁLISE COMPLETA'}
+                        {!isTipLoading && <ChevronRight size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="prose prose-slate max-w-none">
+                    <div className="text-slate-700 whitespace-pre-line leading-relaxed text-sm md:text-base">
+                      {fullInsight}
+                    </div>
+                    <button 
+                      onClick={handleFetchTip} 
+                      className="mt-10 text-xs font-black text-indigo-600 uppercase flex items-center gap-2 hover:gap-3 transition-all"
+                    >
+                      Refazer análise com dados atualizados <RefreshCcw size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl space-y-6">
+                  <h3 className="font-black text-lg flex items-center gap-3">
+                    <Zap className="text-indigo-400" /> Quick Wins
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                      <p className="text-[10px] font-black text-indigo-400 uppercase mb-2">Aquisição Urgente</p>
+                      <p className="text-sm font-bold">
+                        Você precisa de <span className="text-indigo-400">{(debts.reduce((a,b)=>a+b.remainingAmount,0) / ticketMedio).toFixed(1)}</span> clientes com ticket de {formatCurrency(ticketMedio)} para zerar seu passivo total.
+                      </p>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                      <p className="text-[10px] font-black text-rose-400 uppercase mb-2">Stop Leakage</p>
+                      <p className="text-sm font-bold">
+                        Ao zerar o vazamento de <span className="text-rose-400">{formatCurrency(stats.personalLeakedInBusiness)}</span>, você acelera sua meta anual em 2 meses.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                   <h3 className="font-black text-slate-800 mb-6 flex items-center gap-2"><ArrowRightCircle className="text-emerald-500" /> Próximos Passos</h3>
+                   <ul className="space-y-4">
+                      {[
+                        'Isolar contas bancárias imediatamente.',
+                        'Priorizar quitação de dívidas > 8% juros/mês.',
+                        'Revisar rateio de energia e luz mensalmente.',
+                        'Aumentar ticket médio em 15% até Junho.'
+                      ].map((step, idx) => (
+                        <li key={idx} className="flex gap-3 text-xs font-bold text-slate-600">
+                          <span className="text-indigo-600">{idx + 1}.</span>
+                          {step}
+                        </li>
+                      ))}
+                   </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'transactions' && (
            <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-300">
               <div className="flex justify-between items-center"><h2 className="text-3xl font-black tracking-tighter">Fluxo de Caixa Estratégico</h2><button onClick={() => { setEditingId(null); setShowTransactionModal(true); }} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg">Novo Lançamento</button></div>
@@ -512,7 +653,6 @@ const App: React.FC = () => {
            </div>
         )}
 
-        {/* --- FIXED COSTS --- */}
         {activeTab === 'fixed-costs' && (
           <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-300">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -545,7 +685,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* --- BALDES DE LUCRO --- */}
         {activeTab === 'buckets' && (
           <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-300">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -570,12 +709,11 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* --- IMPOSTOS --- */}
         {activeTab === 'taxes' && (
           <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-300">
              <div className="flex justify-between items-center">
                <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Impostos (BR)</h2>
-               <button onClick={() => { setEditingId(null); setShowTaxModal(true); }} className="bg-amber-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:bg-amber-600 transition-all flex items-center gap-2">
+               <button onClick={() => { setEditingId(null); setShowTaxModal(true); }} className="bg-amber-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg flex items-center gap-2">
                  <FileText size={18} /> Registrar Guia Paga
                </button>
              </div>
@@ -589,7 +727,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* --- DÍVIDAS --- */}
         {activeTab === 'debts' && (
           <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-300">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -642,13 +779,26 @@ const App: React.FC = () => {
               <div className="p-10 border-b border-slate-100 flex justify-between items-center"><h2 className="text-2xl font-black text-slate-800 tracking-tighter">Novo Lançamento</h2><button onClick={() => setShowTransactionModal(false)}><X /></button></div>
               <div className="p-10 space-y-8">
                 <div className="flex bg-slate-50 p-2 rounded-[1.5rem]"><button onClick={() => setTxFormData({...txFormData, type: TransactionType.INCOME})} className={`flex-1 py-4 rounded-2xl text-xs font-black transition-all ${txFormData.type === TransactionType.INCOME ? 'bg-white text-emerald-600 shadow-lg' : 'text-slate-400'}`}>Entrada</button><button onClick={() => setTxFormData({...txFormData, type: TransactionType.EXPENSE})} className={`flex-1 py-4 rounded-2xl text-xs font-black transition-all ${txFormData.type === TransactionType.EXPENSE ? 'bg-white text-rose-600 shadow-lg' : 'text-slate-400'}`}>Saída</button></div>
-                <input type="text" placeholder="Descrição" value={txFormData.description} onChange={e => setTxFormData({...txFormData, description: e.target.value})} className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] outline-none font-bold" />
-                <input type="text" value={txFormData.amount} onChange={e => setTxFormData({...txFormData, amount: e.target.value})} className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] outline-none font-black text-2xl" placeholder="R$ 0,00" />
-                <select value={txFormData.nature} onChange={e => setTxFormData({...txFormData, nature: e.target.value as TransactionNature})} className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] outline-none font-black text-sm">
-                  <option value={TransactionNature.BUSINESS}>Empresa (PJ)</option>
-                  <option value={TransactionNature.PERSONAL}>Pessoal (ERRO)</option>
-                  <option value={TransactionNature.MIXED}>Misto (Rateio)</option>
-                </select>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Data</label>
+                  <input type="date" value={txFormData.date} onChange={e => setTxFormData({...txFormData, date: e.target.value})} className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] outline-none font-bold" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Descrição</label>
+                  <input type="text" placeholder="Ex: Venda de Mentoria" value={txFormData.description} onChange={e => setTxFormData({...txFormData, description: e.target.value})} className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] outline-none font-bold" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Valor</label>
+                  <input type="text" value={txFormData.amount} onChange={e => setTxFormData({...txFormData, amount: e.target.value})} className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] outline-none font-black text-2xl" placeholder="R$ 0,00" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Natureza</label>
+                  <select value={txFormData.nature} onChange={e => setTxFormData({...txFormData, nature: e.target.value as TransactionNature})} className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] outline-none font-black text-sm">
+                    <option value={TransactionNature.BUSINESS}>Empresa (PJ)</option>
+                    <option value={TransactionNature.PERSONAL}>Pessoal (ERRO)</option>
+                    <option value={TransactionNature.MIXED}>Misto (Rateio)</option>
+                  </select>
+                </div>
                 <button onClick={handleSaveTransaction} className="w-full py-6 bg-indigo-600 text-white font-black rounded-[1.5rem] shadow-xl hover:bg-indigo-700 uppercase tracking-widest">Confirmar</button>
               </div>
             </div>
@@ -660,6 +810,8 @@ const App: React.FC = () => {
             <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-md animate-in zoom-in duration-150">
               <div className="p-10 border-b border-slate-100 flex justify-between items-center"><h2 className="text-2xl font-black text-slate-800 tracking-tighter">Registrar Guia Paga</h2><button onClick={() => setShowTaxModal(false)}><X /></button></div>
               <div className="p-10 space-y-6">
+                <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Data do Pagamento</label>
+                <input type="date" value={taxFormData.date} onChange={e => setTaxFormData({...taxFormData, date: e.target.value})} className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] outline-none font-bold" /></div>
                 <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Imposto</label><select value={taxFormData.taxName} onChange={e => setTaxFormData({...taxFormData, taxName: e.target.value})} className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] outline-none font-black text-sm">
                   <option value="DAS - Simples Nacional">DAS - Simples Nacional</option>
                   <option value="ISS Municipal">ISS Municipal</option>

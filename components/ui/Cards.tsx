@@ -3,7 +3,8 @@ import React from 'react';
 
 interface CardProps {
   title: string;
-  value: string | number;
+  // Fixed: Changed value type from string | number to React.ReactNode to support passing components like TabularNumber
+  value: React.ReactNode;
   subtitle?: string;
   icon?: React.ReactNode;
   trend?: {
